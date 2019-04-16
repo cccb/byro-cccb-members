@@ -1,0 +1,3 @@
+recursive-include cccb_members/static *
+recursive-include cccb_members/templates *
+recursive-include cccb_members/locale *
