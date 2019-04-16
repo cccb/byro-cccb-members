@@ -4,11 +4,16 @@ CCCB Member import
 """
 
 import pprint
-
 import csv
 from datetime import date
 
+from django.db import transaction
 from django.core.management.base import BaseCommand
+
+from byro.members import models as members_models
+from byro.plugins.profile import models as profile_models
+from byro.plugins.sepa import models as sepa_models
+
 
 def _decode_membership_type(row):
     """
@@ -113,7 +118,6 @@ def _decode_member(row):
             "until": _decode_membership_end(row),
             "active": _decode_boolean(row[16]),
         },
-        "iban": row[7],
         "payment": _decode_payment(row),
         "address": _decode_address(row),
         "memberships": _decode_memberships(row),
@@ -127,6 +131,49 @@ def _read_memberslist(filename):
         reader = csv.reader(f)
 
         return [_decode_member(row) for row in reader][1:]
+
+
+@transaction.atomic
+def _import_member(member_data):
+    """Create member in database"""
+    if not member_data["memberships"]["cccb"]:
+        print(" [-] Not importing: {} - not a member.".format(
+            member_data["name"]))
+        return
+    else:
+        print(" [i] Importing member: {}".format(member_data["name"]))
+    
+    member, _ = members_models.Member.objects.update_or_create(
+        number=member_data["number"],
+        name=member_data["name"],
+        address=member_data["address"],
+        email=member_data["email"])
+
+    # Create membership info
+    members_models.Membership.objects.update_or_create(
+        member=member,
+        start=member_data["membership"]["since"],
+        end=member_data["membership"]["until"],
+        interval=members_models.FeeIntervals.MONTHLY,
+        amount=member_data["membership"]["fee"])
+
+    # Create profile
+    profile_models.MemberProfile.objects.update_or_create(
+        member=member,
+        nick=member_data["nick"])
+    
+    # Create Sepa information if present
+    if member_data["payment"]["iban"]:
+        print(" [+] Creating SEPA mandate")
+        sepa_models.MemberSepa.objects.update_or_create(
+            member=member,
+            iban=member_data["payment"]["iban"])
+
+
+def _import_members(members):
+    """Import all the members"""
+    for member in members:
+        _import_member(member)
 
 
 class Command(BaseCommand):
@@ -145,5 +192,5 @@ class Command(BaseCommand):
             options["filename"]))
 
         members = _read_memberslist(options["filename"])
+        _import_members(members)
 
-        pprint.pprint(members)
