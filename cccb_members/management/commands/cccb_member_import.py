@@ -78,7 +78,11 @@ def _decode_date(data):
 
 def _decode_membership_start(row):
     """When did the membership start"""
-    return _decode_date(row[14])
+    start = _decode_date(row[14])
+    if not start:
+        start = date(1970, 1, 1)
+
+    return start
 
 
 def _decode_membership_end(row):
