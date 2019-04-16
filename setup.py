@@ -25,7 +25,7 @@ cmdclass = {
 
 setup(
     name='byro-cccb-members',
-    version='0.0.2',
+    version='0.0.3',
     description='Membership extensions for byro',
     long_description=long_description,
     url='https://github.com/cccb/byro-cccb-members',

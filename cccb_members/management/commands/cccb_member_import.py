@@ -15,6 +15,13 @@ from byro.plugins.profile import models as profile_models
 from byro.plugins.sepa import models as sepa_models
 
 
+def _decode_amount(value):
+    """Decode fee"""
+    value = value.replace(",", ".")
+
+    return value
+
+
 def _decode_membership_type(row):
     """
     Decode membership type: 
@@ -116,7 +123,7 @@ def _decode_member(row):
         "name": _decode_string(row[2]),
         "nick": _decode_string(row[3]),
         "membership": {
-            "fee": _decode_int(row[4]),
+            "fee": _decode_amount(row[4]),
             "type": _decode_membership_type(row),
             "since": _decode_membership_start(row),
             "until": _decode_membership_end(row),
